@@ -20,6 +20,21 @@ export default function(this: Rsg.StyleguidistLoaderContext, source: string) {
 	const file: string = this.request.split('!').pop() || '';
 	const config = this._styleguidist;
 
+	function documentationObjectPropsToSortedArray(documentationProps: {
+		[propName: string]: PropDescriptor;
+	}): PropDescriptor[] {
+		// Transform the properties to an array. This will allow sorting
+		// TODO: Extract to a module
+		const propsAsArray = Object.keys(documentationProps).reduce((acc: PropDescriptor[], name) => {
+			documentationProps[name].name = name;
+			acc.push(documentationProps[name]);
+			return acc;
+		}, []);
+
+		const sortProps = config.sortProps || defaultSortProps;
+		return sortProps(propsAsArray);
+	}
+
 	// Setup Webpack context dependencies to enable hot reload when adding new files or updating any of component dependencies
 	if (config.contextDependencies) {
 		config.contextDependencies.forEach(dir => this.addContextDependency(dir));
@@ -37,6 +52,7 @@ export default function(this: Rsg.StyleguidistLoaderContext, source: string) {
 	const propsParser = config.propsParser || defaultParser;
 
 	let docs: DocumentationObject = {};
+	let additionalComponents: DocumentationObject[] = [];
 	try {
 		docs = propsParser(file, source, config.resolver, config.handlers(file));
 
@@ -45,6 +61,7 @@ export default function(this: Rsg.StyleguidistLoaderContext, source: string) {
 			if (docs.length === 0) {
 				throw new Error(ERROR_MISSING_DEFINITION);
 			}
+			additionalComponents = docs.slice(1);
 			docs = docs[0];
 		}
 	} catch (err) {
@@ -65,18 +82,8 @@ export default function(this: Rsg.StyleguidistLoaderContext, source: string) {
 	const tempDocs = getProps(docs, file);
 	let finalDocs: Rsg.PropsObject = { ...tempDocs, props: [] };
 
-	const componentProps = tempDocs.props;
-	if (componentProps) {
-		// Transform the properties to an array. This will allow sorting
-		// TODO: Extract to a module
-		const propsAsArray = Object.keys(componentProps).reduce((acc: PropDescriptor[], name) => {
-			componentProps[name].name = name;
-			acc.push(componentProps[name]);
-			return acc;
-		}, []);
-
-		const sortProps = config.sortProps || defaultSortProps;
-		finalDocs.props = sortProps(propsAsArray);
+	if (tempDocs.props) {
+		finalDocs.props = documentationObjectPropsToSortedArray(tempDocs.props);
 	}
 
 	// Examples from Markdown file
@@ -87,6 +94,16 @@ export default function(this: Rsg.StyleguidistLoaderContext, source: string) {
 		examplesFile,
 		config.defaultExample
 	);
+
+	//TODO if statement based on configuration setting to allow multiple components
+	finalDocs.additionalComponents = additionalComponents.map((component: DocumentationObject) => {
+		const tempComponent = getProps(component, file);
+		const finalComponent: Rsg.PropsObject = { ...tempComponent, props: [] };
+		if (tempComponent.props) {
+			finalComponent.props = documentationObjectPropsToSortedArray(tempComponent.props);
+		}
+		return finalComponent;
+	});
 
 	if (config.updateDocs) {
 		finalDocs = config.updateDocs(finalDocs, file);

@@ -10,6 +10,7 @@ export interface UsageTabButtonProps {
 	props: {
 		props?: any[];
 		methods?: any[];
+		additionalComponents?: any[];
 	};
 }
 
@@ -25,6 +26,7 @@ UsageTabButton.propTypes = {
 	props: PropTypes.shape({
 		props: PropTypes.array,
 		methods: PropTypes.array,
+		additionalComponents: PropTypes.array,
 	}).isRequired,
 	active: PropTypes.bool,
 };

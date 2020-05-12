@@ -15,5 +15,6 @@ export interface TempPropsObject extends DocumentationObject {
 
 export interface PropsObject extends Omit<TempPropsObject, 'props'> {
 	props?: Record<string, PropDescriptor> | PropDescriptor[];
+	additionalComponents?: PropsObject[];
 	examples?: RequireItResult | null;
 }
